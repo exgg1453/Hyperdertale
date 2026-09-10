@@ -1,0 +1,97 @@
+name: android
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  LOVE_ANDROID_REF: "11.5a"
+  APP_ID: "io.github.exgg1453.hyperdertale"
+  APP_LABEL: "Hyperdertale"
+
+jobs:
+  apk:
+    name: build apk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the game
+        uses: actions/checkout@v4
+        with:
+          path: game
+
+      - name: Build hyperdertale.love
+        run: |
+          cd game
+          zip -9 -r ../hyperdertale.love . \
+            -x '.git/*' '.github/*' 'docs/*' 'dist/*' '*.md' 'LICENSE' '.gitignore'
+          unzip -l ../hyperdertale.love | grep -q ' main.lua$'
+
+      - name: Check out the LOVE Android port
+        run: |
+          # Tags move slowly; fall back to the default branch if the pin is gone.
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            --branch "${LOVE_ANDROID_REF}" https://github.com/love2d/love-android.git port \
+          || git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/love2d/love-android.git port
+
+      - name: Embed the game
+        run: |
+          mkdir -p port/app/src/embed/assets
+          cp hyperdertale.love port/app/src/embed/assets/game.love
+          ls -la port/app/src/embed/assets
+
+      - name: Brand the package
+        run: |
+          cd port
+          # Give the APK its own application id so it installs alongside LOVE itself.
+          sed -i "s/applicationId ['\"]org\.love2d\.android['\"]/applicationId '${APP_ID}'/" app/build.gradle || true
+          grep -n "applicationId" app/build.gradle || true
+
+          for strings in $(find app/src -name strings.xml); do
+            sed -i "s|<string name=\"app_name\">[^<]*</string>|<string name=\"app_name\">${APP_LABEL}</string>|" "$strings"
+            echo "--- $strings"
+            cat "$strings"
+          done
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Accept Android SDK licences
+        run: yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Gradle build
+        run: |
+          cd port
+          chmod +x gradlew
+          # Task names have shifted between LOVE Android releases, so try the
+          # known variants in order and stop at the first that exists.
+          ./gradlew --no-daemon assembleEmbedNoRecordDebug \
+            || ./gradlew --no-daemon assembleEmbedDebug \
+            || ./gradlew --no-daemon assembleDebug
+
+      - name: Collect the APK
+        run: |
+          mkdir -p out
+          find port -name '*.apk' -path '*outputs*' -print -exec cp {} out/ \;
+          cd out && for f in *.apk; do mv "$f" "Hyperdertale-${f}"; done
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hyperdertale-android
+          path: out/*.apk
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" out/*.apk \
+            --repo "${GITHUB_REPOSITORY}" --clobber || true
