@@ -22,6 +22,15 @@ local function buildRows()
       label = "SOUND",
       value = function () return data.sound and "ON" or "OFF" end,
       change = function () data.sound = not data.sound end,
+      hint = "MUSIC AND EFFECTS",
+    },
+    {
+      label = "MUSIC",
+      value = function ()
+        if not data.sound then return "--" end   -- the master switch wins
+        return data.music and "ON" or "OFF"
+      end,
+      change = function () data.music = not data.music end,
     },
     {
       label = "CONTROLS",

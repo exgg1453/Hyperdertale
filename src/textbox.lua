@@ -19,6 +19,8 @@ function Textbox.new(opts)
   self.h = opts.h or 64
   self.voice = opts.voice or "blip"
   self.speed = opts.speed or CHARS_PER_SECOND
+  -- How many lines fit, leaving room for the "press to continue" marker.
+  self.maxLines = math.max(1, math.floor((self.h - 26) / Draw.lineHeight))
   self.pages = {}
   self.page = 0
   self.lines = {}
@@ -30,9 +32,27 @@ function Textbox.new(opts)
   return self
 end
 
---- Queue one string or a list of strings. Each entry is one page.
+--- Queue one string or a list of strings. Text longer than the box holds is
+--- split across as many pages as it needs, so nothing is ever drawn outside.
 function Textbox:say(text, onDone)
-  self.pages = type(text) == "table" and text or {text}
+  local sources = type(text) == "table" and text or {text}
+
+  self.pages = {}
+  for _, source in ipairs(sources) do
+    local wrapped = Draw.wrap(source, self.w - 20)
+    local page = {}
+    for _, line in ipairs(wrapped) do
+      page[#page + 1] = line
+      if #page == self.maxLines then
+        self.pages[#self.pages + 1] = page
+        page = {}
+      end
+    end
+    if #page > 0 then self.pages[#self.pages + 1] = page end
+  end
+
+  if #self.pages == 0 then self.pages = {{""}} end
+
   self.page = 0
   self.active = true
   self.onDone = onDone
@@ -52,7 +72,7 @@ function Textbox:advance()
     return
   end
 
-  self.lines = Draw.wrap(self.pages[self.page], self.w - 20)
+  self.lines = self.pages[self.page]
   self.total = 0
   for _, line in ipairs(self.lines) do self.total = self.total + #line end
   self.revealed = 0
@@ -90,6 +110,9 @@ function Textbox:draw()
 
   Draw.box(self.x, self.y, self.w, self.h)
 
+  -- Belt and braces: even a mis-measured line cannot escape the box.
+  love.graphics.setScissor(self.x + 2, self.y + 2, self.w - 4, self.h - 4)
+
   local budget = math.floor(self.revealed)
   local ty = self.y + 10
   for _, line in ipairs(self.lines) do
@@ -100,9 +123,13 @@ function Textbox:draw()
     ty = ty + Draw.lineHeight
   end
 
+  love.graphics.setScissor()
+
   -- A blinking marker tells the player the box is waiting on them.
   if self:isFinished() and (self.blink % 1) < 0.6 then
-    Draw.text("*", self.x + self.w - 14, self.y + self.h - 16, {1, 1, 1})
+    local more = self.page < #self.pages
+    Draw.text(more and "v" or "*", self.x + self.w - 14, self.y + self.h - 14,
+      {1, 1, 1})
   end
 end
 

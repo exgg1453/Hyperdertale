@@ -8,7 +8,7 @@ local RATE = 22050
 local songs, sfx = {}, {}
 local cache = {}
 local current, currentName = nil, nil
-local muted = false
+local soundOn, musicOn = true, true
 
 -- Semitone offset from A4 for each note name.
 local STEPS = {
@@ -269,6 +269,16 @@ local SFX = {
 
 -- ---- public API ------------------------------------------------------------
 
+--- Music follows both switches: the master one and its own.
+local function refreshMusic()
+  if not current then return end
+  if soundOn and musicOn then
+    if not current:isPlaying() then current:play() end
+  else
+    current:pause()
+  end
+end
+
 function Audio.load()
   -- Effects are tiny, so they are built up front; songs stay lazy.
   for name, build in pairs(SFX) do
@@ -291,8 +301,7 @@ function Audio.play(name)
   end
 
   current, currentName = cache[name], name
-  current:setVolume(muted and 0 or 1)
-  current:play()
+  refreshMusic()
 end
 
 function Audio.stop()
@@ -303,31 +312,35 @@ end
 function Audio.playing() return currentName end
 
 function Audio.sfx(name)
-  if muted then return end
+  if not soundOn then return end
   local source = sfx[name]
   if not source then return end
   source:stop()
   source:play()
 end
 
-function Audio.toggleMute()
-  Audio.setEnabled(muted)
-  return muted
-end
-
---- Turn all sound on or off; the settings screen drives this.
+--- Master switch: silences music and effects together.
 function Audio.setEnabled(enabled)
-  muted = not enabled
-  love.audio.setVolume(muted and 0 or 1)
-  if muted then
-    if current then current:pause() end
-  elseif current then
-    current:play()
-  end
+  soundOn = enabled ~= false
+  love.audio.setVolume(soundOn and 1 or 0)
+  refreshMusic()
 end
 
-function Audio.isEnabled() return not muted end
+function Audio.isEnabled() return soundOn end
 
-function Audio.isMuted() return muted end
+--- Music only, so effects can stay on with the songs off.
+function Audio.setMusicEnabled(enabled)
+  musicOn = enabled ~= false
+  refreshMusic()
+end
+
+function Audio.isMusicEnabled() return musicOn end
+
+function Audio.toggleMute()
+  Audio.setEnabled(not soundOn)
+  return not soundOn
+end
+
+function Audio.isMuted() return not soundOn end
 
 return Audio

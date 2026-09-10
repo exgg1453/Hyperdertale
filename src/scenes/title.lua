@@ -111,7 +111,7 @@ function Title:draw()
   Draw.pixels(Sprites.heart, Draw.W / 2 - 14, 96, 4, Sprites.palette.heart)
 
   if self.settings then
-    self.settings:draw(20, 34, 280, 150)
+    self.settings:draw(20, 26, 280, 176)
     return
   end
 

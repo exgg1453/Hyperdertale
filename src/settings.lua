@@ -14,6 +14,7 @@ local SCALE_VALUES = {0.78, 1.0, 1.28}
 local function defaults()
   return {
     sound = true,
+    music = true,
     controls = "dpad",   -- "dpad" or "stick"
     buttonSize = 2,      -- index into SCALE_VALUES
     touchUI = "auto",    -- "auto", "on" or "off"
@@ -57,6 +58,7 @@ end
 function Settings.apply()
   local Input = require("src.input")
   Audio.setEnabled(Settings.data.sound)
+  Audio.setMusicEnabled(Settings.data.music)
   Input.setStyle(Settings.data.controls)
   Input.setButtonScale(Settings.buttonScale())
   if Settings.data.touchUI == "on" then

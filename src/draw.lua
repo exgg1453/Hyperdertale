@@ -75,10 +75,28 @@ function Draw.textCentered(str, centreX, y, color)
   Draw.text(str, math.floor(centreX - Draw.measure(str) / 2), y, color)
 end
 
+--- Split on newlines. Written with find rather than gmatch because LuaJIT,
+--- which LOVE runs on, returns an extra empty match between lines for a
+--- pattern that can match nothing - which silently doubled line spacing.
+local function splitLines(str)
+  local parts = {}
+  local start = 1
+  while true do
+    local from, to = string.find(str, "\n", start, true)
+    if not from then
+      parts[#parts + 1] = string.sub(str, start)
+      break
+    end
+    parts[#parts + 1] = string.sub(str, start, from - 1)
+    start = to + 1
+  end
+  return parts
+end
+
 --- Word-wrap to `width` pixels; returns a list of lines.
 function Draw.wrap(str, width)
   local lines = {}
-  for rawLine in tostring(str):gmatch("[^\n]*") do
+  for _, rawLine in ipairs(splitLines(tostring(str))) do
     local line = ""
     for word in rawLine:gmatch("%S+") do
       local candidate = line == "" and word or (line .. " " .. word)
@@ -91,8 +109,6 @@ function Draw.wrap(str, width)
     end
     lines[#lines + 1] = line
   end
-  -- gmatch on "[^\n]*" yields a trailing empty match; drop it.
-  if #lines > 1 and lines[#lines] == "" then table.remove(lines) end
   return lines
 end
 

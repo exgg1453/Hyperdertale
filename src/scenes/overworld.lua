@@ -34,11 +34,14 @@ local ROOMS = {
       {x = 0, y = 0, w = 320, h = 40},
       {x = 0, y = 0, w = 40, h = 240},
       {x = 280, y = 0, w = 40, h = 240},
-      {x = 0, y = 224, w = 320, h = 16},
-      {x = 40, y = 40, w = 44, h = 30},
-      {x = 236, y = 40, w = 44, h = 30},
+      -- The south wall is split so the doorway is a real gap you can walk
+      -- into, not a trigger sitting on top of solid stone.
+      {x = 0, y = 214, w = 140, h = 26},
+      {x = 180, y = 214, w = 140, h = 26},
     },
     entities = {
+      {kind = "bed", x = 48, y = 44, w = 32, h = 36},
+      {kind = "bed", x = 240, y = 44, w = 32, h = 36},
       {
         kind = "npc", sprite = "guide", palette = "guide",
         x = 92, y = 92, w = 24, h = 34,
@@ -48,17 +51,19 @@ local ROOMS = {
           "* Down the hall there are monsters. They are not cruel, only bored.",
           "* You can FIGHT them. You can also TALK to them, and let them go.",
           "* Both work. Only one of them is quiet afterwards.",
+          "* Rest in a bed first, if you like. They are older than I am.",
         },
         repeatDialogue = {
+          "* The beds are yours if you want them. Sleeping mends what hurts.",
           "* Mind the crack in the long hall. You can hop over it.",
           "* Take your time. The RUINS have plenty of it.",
         },
         flag = "metGuide",
       },
-      {kind = "save", x = 200, y = 104, w = 16, h = 16},
+      {kind = "save", x = 200, y = 104, w = 18, h = 18},
       {
-        kind = "door", x = 140, y = 224, w = 40, h = 14,
-        to = "ruins_hall", spawnX = 160, spawnY = 62, label = "SOUTH",
+        kind = "door", x = 140, y = 214, w = 40, h = 14,
+        to = "ruins_hall", spawnX = 160, spawnY = 62,
       },
     },
   },
@@ -69,7 +74,8 @@ local ROOMS = {
     floor = {0.13, 0.11, 0.19},
     wall = {0.26, 0.21, 0.38},
     walls = {
-      {x = 0, y = 0, w = 320, h = 34},
+      {x = 0, y = 0, w = 140, h = 34},
+      {x = 180, y = 0, w = 140, h = 34},
       {x = 0, y = 0, w = 52, h = 240},
       {x = 268, y = 0, w = 52, h = 240},
       {x = 0, y = 214, w = 320, h = 26},
@@ -84,8 +90,8 @@ local ROOMS = {
     encounter = {enemy = "critter", chance = 0.9},
     entities = {
       {
-        kind = "door", x = 140, y = 22, w = 40, h = 14,
-        to = "ruins_entry", spawnX = 160, spawnY = 198, label = "NORTH",
+        kind = "door", x = 140, y = 24, w = 40, h = 14,
+        to = "ruins_entry", spawnX = 160, spawnY = 196,
       },
       {
         kind = "sign", x = 236, y = 58, w = 16, h = 20,
@@ -134,7 +140,8 @@ function Overworld:blocked(x, y)
   end
 
   for _, entity in ipairs(self.room.entities) do
-    if entity.kind == "npc" or entity.kind == "sign" or entity.kind == "save" then
+    if entity.kind == "npc" or entity.kind == "sign" or entity.kind == "save"
+       or entity.kind == "bed" then
       if overlaps(fx, fy, fw, fh, entity.x, entity.y, entity.w, entity.h) then return true end
     end
   end
@@ -183,6 +190,7 @@ function Overworld:enter(args)
   self.menuPage = "root"
   self.itemIndex = 1
   self.settings = nil
+  self.sleep = nil
   self.flash = 0
 
   self.box = Textbox.new()
@@ -221,6 +229,16 @@ function Overworld:interact()
       written and ("* HP restored.  SAVED.  " .. Save.clock())
               or "* HP restored.  (This device would not let the game save.)",
     })
+    return
+  end
+
+  if entity.kind == "bed" then
+    if Save.player.hp >= Save.player.maxhp then
+      self.box:say("* (The bed is made up and waiting.)\n* You are not tired.")
+    else
+      self.sleep = {phase = "out", t = 0}
+      Audio.sfx("save")
+    end
     return
   end
 
@@ -334,10 +352,44 @@ function Overworld:updateMenu(dt)
   end
 end
 
+local SLEEP_FADE, SLEEP_HOLD = 0.7, 1.4
+
+function Overworld:updateSleep(dt)
+  local sleep = self.sleep
+  sleep.t = sleep.t + dt
+
+  if sleep.phase == "out" and sleep.t >= SLEEP_FADE then
+    sleep.phase, sleep.t = "hold", 0
+    Save.player.hp = Save.player.maxhp
+    -- Resting costs time, the way an inn does.
+    Save.player.playtime = Save.player.playtime + 60
+  elseif sleep.phase == "hold" and sleep.t >= SLEEP_HOLD then
+    sleep.phase, sleep.t = "in", 0
+    Audio.sfx("heal")
+  elseif sleep.phase == "in" and sleep.t >= SLEEP_FADE then
+    self.sleep = nil
+    self.box:say("* You slept for a while.\n* HP fully restored.")
+  end
+end
+
+--- 0 to 1: how black the screen is during the nap.
+function Overworld:sleepDarkness()
+  local sleep = self.sleep
+  if not sleep then return 0 end
+  if sleep.phase == "out" then return math.min(1, sleep.t / SLEEP_FADE) end
+  if sleep.phase == "hold" then return 1 end
+  return math.max(0, 1 - sleep.t / SLEEP_FADE)
+end
+
 function Overworld:update(dt)
   self.titleTimer = math.max(0, self.titleTimer - dt)
   self.flash = math.max(0, self.flash - dt * 3)
   Save.player.playtime = Save.player.playtime + dt
+
+  if self.sleep then
+    self:updateSleep(dt)
+    return
+  end
 
   if self.box.active then
     self.box:update(dt)
@@ -456,7 +508,7 @@ function Overworld:drawMenu()
   local player = Save.player
 
   if self.menuPage == "settings" then
-    self.settings:draw(20, 34, 280, 150)
+    self.settings:draw(20, 26, 280, 176)
     return
   end
 
@@ -566,9 +618,34 @@ function Overworld:draw()
     if entity.kind == "npc" then
       Draw.pixels(Sprites[entity.sprite] or Sprites.guide, entity.x, entity.y, SCALE,
         Sprites.palette[entity.palette] or Sprites.palette.guide)
+    elseif entity.kind == "bed" then
+      Draw.pixels(Sprites.bed, entity.x, entity.y, 2, Sprites.palette.bed)
     elseif entity.kind == "save" then
-      local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 3)
-      Draw.pixels(Sprites.star, entity.x, entity.y, 2, {["1"] = {1, 0.95 * pulse, 0.30 * pulse}})
+      local time = love.timer.getTime()
+      local pulse = 0.72 + 0.28 * math.sin(time * 3)
+      local cx, cy = entity.x + 9, entity.y + 9
+
+      -- Pixel beams rather than a smooth circle: a round gradient reads as a
+      -- dark disc against this floor and fights the rest of the art.
+      local reach = 7 + 3 * pulse
+      for _, beam in ipairs({{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) do
+        for step = 3, reach do
+          local fade = (1 - (step - 3) / reach) * 0.5 * pulse
+          Draw.rect(cx + beam[1] * step - 1, cy + beam[2] * step - 1, 2, 2,
+            {1, 0.95, 0.55, fade})
+        end
+      end
+
+      Draw.pixels(Sprites.star, entity.x, entity.y, 2,
+        {["1"] = {1, 0.86 + 0.14 * pulse, 0.20 + 0.25 * pulse}})
+
+      -- Three sparks orbiting the star, so it reads as "something happens here".
+      for i = 0, 2 do
+        local angle = time * 1.5 + i * (math.pi * 2 / 3)
+        local radius = 13 + math.sin(time * 3 + i) * 2
+        Draw.rect(cx + math.cos(angle) * radius - 1, cy + math.sin(angle) * radius - 1,
+          2, 2, {1, 1, 0.65, 0.85})
+      end
     elseif entity.kind == "sign" then
       Draw.rect(entity.x, entity.y, entity.w, entity.h, {0.45, 0.35, 0.25})
       Draw.rect(entity.x + 2, entity.y + 2, entity.w - 4, entity.h - 8, {0.75, 0.68, 0.55})
@@ -579,9 +656,23 @@ function Overworld:draw()
         Draw.rect(entity.x + 2, entity.y + 4 + bob, 12, 3, {0.95, 0.85, 0.55})
       end
     elseif entity.kind == "door" then
-      Draw.rect(entity.x, entity.y, entity.w, entity.h, {0.06, 0.05, 0.09})
-      Draw.textCentered(entity.label or "", entity.x + entity.w / 2,
-        entity.y + entity.h / 2 - 4, {0.5, 0.5, 0.5})
+      local d = entity
+      local frame = {room.wall[1] * 1.25, room.wall[2] * 1.25, room.wall[3] * 1.25}
+
+      Draw.rect(d.x - 5, d.y - 7, d.w + 10, d.h + 12, frame)
+      Draw.rect(d.x - 5, d.y - 7, d.w + 10, 2,
+        {room.wall[1] * 1.6, room.wall[2] * 1.6, room.wall[3] * 1.6})
+
+      -- The opening itself, with the corners squared off into an arch.
+      Draw.rect(d.x, d.y - 3, d.w, d.h + 6, {0.03, 0.02, 0.05})
+      Draw.rect(d.x, d.y - 3, 4, 4, frame)
+      Draw.rect(d.x + d.w - 4, d.y - 3, 4, 4, frame)
+
+      -- A little light spilling through, so it reads as a way out.
+      local glow = 0.16 + 0.06 * math.sin(love.timer.getTime() * 2)
+      Draw.rect(d.x + 3, d.y + d.h - 1, d.w - 6, 3, {0.55, 0.45, 0.75, glow})
+      Draw.rect(d.x + 2, d.y + d.h + 3, d.w - 4, 2,
+        {room.wall[1] * 0.8, room.wall[2] * 0.8, room.wall[3] * 0.8})
     end
   end
 
@@ -594,6 +685,15 @@ function Overworld:draw()
 
   if self.menuOpen then self:drawMenu() end
   self.box:draw()
+
+  local dark = self:sleepDarkness()
+  if dark > 0 then
+    Draw.fade(dark)
+    if self.sleep and self.sleep.phase == "hold" then
+      local dots = 1 + math.floor(self.sleep.t * 2) % 3
+      Draw.textCentered(string.rep("Z", dots), Draw.W / 2, Draw.H / 2 - 4, {0.8, 0.8, 0.9})
+    end
+  end
 
   if self.flash > 0 then
     love.graphics.setColor(1, 1, 1, math.min(1, self.flash))

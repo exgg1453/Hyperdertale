@@ -24,16 +24,18 @@ bunları kendi kodumuzla uyguladık.
 
 ## Oynanış
 
-| Overworld (zıplama) | Savaş | Kaçınma |
+| Giriş (yataklar, kaydetme yıldızı, kapı) | Savaş | Kaçınma |
 |---|---|---|
-| ![Overworld](docs/overworld.png) | ![Savaş](docs/battle.png) | ![Kaçınma](docs/dodging.png) |
+| ![Giriş](docs/overworld.png) | ![Savaş](docs/battle.png) | ![Kaçınma](docs/dodging.png) |
 
-| Ayarlar | Dokunmatik kontroller |
-|---|---|
-| ![Ayarlar](docs/settings.png) | ![Dokunmatik](docs/touch.png) |
+| Zıplama | Ayarlar | Dokunmatik |
+|---|---|---|
+| ![Zıplama](docs/jumping.png) | ![Ayarlar](docs/settings.png) | ![Dokunmatik](docs/touch.png) |
 
 - **Overworld** — çarpışmalı gezinti, NPC diyalogları, kaydetme yıldızı, tabelalar,
-  odalar arası kapılar, yerden toplanan eşyalar ve uzun otlarda rastgele karşılaşmalar.
+  kapılar, yerden toplanan eşyalar ve uzun otlarda rastgele karşılaşmalar.
+- **Yataklar** — girişteki iki yatakta uyuyabilirsin: ekran kararır, HP tamamen
+  dolar, oynama süresi ilerler. HP zaten doluysa uyanık kalırsın.
 - **Zıplama** — zemindeki çatlağın üstünden atlanır (yandan dolaşmak da mümkün).
   Havadayken çukurlar geçilir, duvarlar geçilmez ve otlarda karşılaşma tetiklenmez —
   yani otların üstünden zıplayarak geçebilirsin.
@@ -65,7 +67,8 @@ Başlık ekranından **SETTINGS**, oyun içinde **C** → **SETTINGS**. Seçimle
 
 | Ayar | Seçenekler | Ne yapar |
 |---|---|---|
-| SOUND | ON / OFF | Müzik ve efektleri kapatır |
+| SOUND | ON / OFF | Ana ses anahtarı — müzik ve efektlerin ikisini birden kapatır |
+| MUSIC | ON / OFF | Sadece müziği kapatır, efektler açık kalır. SOUND kapalıysa `--` görünür |
 | CONTROLS | D-PAD / JOYSTICK | Sol taraftaki yürüme kontrolünü değiştirir. Joystick parmağın nereye değerse orada belirir ve analogdur — hafif ittirince karakter yavaş yürür |
 | BUTTON SIZE | SMALL / MEDIUM / LARGE | Ekran düğmelerinin boyutu |
 | TOUCH PAD | AUTO / ON / OFF | Dokunmatik kontrollerin görünürlüğü |
@@ -99,7 +102,7 @@ Artifacts** altından indirilir:
 | `build.yml` | `Hyperdertale-windows-x64.zip` | LÖVE çalışma zamanı `.exe`'ye kaynaştırılmış taşınabilir sürüm; kurulum gerektirmez |
 | `build.yml` | `Hyperdertale-x86_64.AppImage` | Linux |
 | `build.yml` | `hyperdertale.love` | Her platformda LÖVE ile açılır |
-| `android.yml` | `Hyperdertale-app-*.apk` | `love-android` üzerinden derlenen debug imzalı APK |
+| `android.yml` | `Hyperdertale-app-*.apk` | `love-android` üzerinden derlenen debug imzalı APK. Uygulama adı **Hyperdertale**, paket adı **com.hyperdertale**, yatay moda kilitli |
 
 `build.yml` ayrıca her `.lua` dosyasını `luac -p` ile derleyip sözdizimi
 hatalarını CI'da yakalar.
@@ -144,8 +147,10 @@ src/
 ## İçerik eklemek
 
 - **Yeni oda** — `src/scenes/overworld.lua` içindeki `ROOMS` tablosuna bir giriş
-  ekleyin: `walls`, `entities` (npc / save / sign / item / door), isterseniz
-  `pits` (zıplanacak çukurlar) ve `grass` + `encounter`.
+  ekleyin: `walls`, `entities` (npc / save / sign / item / bed / door), isterseniz
+  `pits` (zıplanacak çukurlar) ve `grass` + `encounter`. Kapı bir tetikleyici
+  değil, duvardaki gerçek bir boşluktur: `walls` listesini kapının olduğu yerde
+  ikiye bölün, `door` girdisini o boşluğa koyun.
 - **Yeni canavar** — `src/data/enemies.lua` içine HP, ATK, DEF, `acts` listesi ve
   kullanacağı desen adlarını yazın; `src/sprites.lua`'ya sprite'ını ekleyin.
 - **Yeni mermi deseni** — `src/data/patterns.lua` içine `duration`, `start` ve
@@ -169,4 +174,4 @@ builds a portable Windows `.exe`, a Linux AppImage, a `.love` package and an
 Android `.apk` on every push, and attaches them to a GitHub Release on a `v*` tag.
 Touch controls are built in and appear automatically on Android, with a choice of
 four-way pad or a floating analog stick, plus a jump button; the Android build is
-locked to landscape.
+locked to landscape, and is installed as Hyperdertale (com.hyperdertale).
