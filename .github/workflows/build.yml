@@ -100,25 +100,31 @@ jobs:
         with:
           name: hyperdertale-love
 
-      - name: Fetch the LOVE AppImage
+      - name: Fetch the LOVE AppImage and appimagetool
         run: |
           curl -fSL -o love.AppImage \
             "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-x86_64.AppImage"
-          chmod +x love.AppImage
-          ./love.AppImage --appimage-extract > /dev/null
+          curl -fSL -o appimagetool \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x love.AppImage appimagetool
+
+          # --appimage-extract always writes into ./squashfs-root, so each one
+          # is unpacked from its own directory to keep the two apart.
+          mkdir -p love-src tool
+          (cd love-src && ../love.AppImage --appimage-extract > /dev/null)
+          (cd tool && ../appimagetool --appimage-extract > /dev/null)
 
       - name: Fuse the game into the AppImage payload
         run: |
-          cat squashfs-root/bin/love hyperdertale.love > squashfs-root/bin/love.fused
-          mv squashfs-root/bin/love.fused squashfs-root/bin/love
-          chmod +x squashfs-root/bin/love
+          payload=love-src/squashfs-root
+          cat "$payload/bin/love" hyperdertale.love > fused
+          mv fused "$payload/bin/love"
+          chmod +x "$payload/bin/love"
 
-          curl -fSL -o appimagetool \
-            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
-          chmod +x appimagetool
-          ./appimagetool --appimage-extract > /dev/null
-          mv squashfs-root appimage-src
-          ARCH=x86_64 ./squashfs-root/AppRun appimage-src "${GAME_NAME}-x86_64.AppImage"
+          sed -i "s/^Name=.*/Name=${GAME_NAME}/" "$payload/love.desktop"
+
+          ARCH=x86_64 ./tool/squashfs-root/AppRun "$payload" "${GAME_NAME}-x86_64.AppImage"
+          ls -la "${GAME_NAME}-x86_64.AppImage"
 
       - uses: actions/upload-artifact@v4
         with:
