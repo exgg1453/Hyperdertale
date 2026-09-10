@@ -417,8 +417,7 @@ function Battle:updateEnemyTurn(dt)
   end
 
   -- The soul, confined to the box.
-  local dx, dy = Input.axisX(), Input.axisY()
-  if dx ~= 0 and dy ~= 0 then dx, dy = dx * 0.7071, dy * 0.7071 end
+  local dx, dy = Input.axes()
   self.soul.x = clamp(self.soul.x + dx * SOUL_SPEED * dt,
     BOX.x + 4 + SOUL_SIZE / 2, BOX.x + BOX.w - 4 - SOUL_SIZE / 2)
   self.soul.y = clamp(self.soul.y + dy * SOUL_SPEED * dt,

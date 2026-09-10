@@ -69,6 +69,10 @@ local function decode(text)
   return result
 end
 
+-- Shared with settings.lua, which stores its own small table the same way.
+Save.encode = function (value) return encode(value, 0) end
+Save.decode = decode
+
 -- ---- disk ------------------------------------------------------------------
 
 function Save.exists()

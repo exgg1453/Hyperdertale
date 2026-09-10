@@ -243,6 +243,23 @@ local SFX = {
       return square(t * f) * (1 - p * 0.6) * 0.32
     end)
   end,
+  jump = function ()
+    return renderSfx(0.16, function (t, p)
+      -- A short rising blip, so the hop reads even without looking down.
+      return square(t * (380 + 320 * p)) * (1 - p) * 0.30
+    end)
+  end,
+  land = function ()
+    return renderSfx(0.10, function (t, p)
+      return (math.random() * 2 - 1) * (1 - p) ^ 2 * 0.28
+    end)
+  end,
+  pickup = function ()
+    return renderSfx(0.34, function (t, p)
+      local f = p < 0.5 and 784 or 1046
+      return square(t * f) * (1 - p) * 0.30
+    end)
+  end,
   menu = function ()
     return renderSfx(0.07, function (t, p)
       return square(t * 520) * (1 - p) * 0.26
@@ -294,10 +311,22 @@ function Audio.sfx(name)
 end
 
 function Audio.toggleMute()
-  muted = not muted
-  love.audio.setVolume(muted and 0 or 1)
+  Audio.setEnabled(muted)
   return muted
 end
+
+--- Turn all sound on or off; the settings screen drives this.
+function Audio.setEnabled(enabled)
+  muted = not enabled
+  love.audio.setVolume(muted and 0 or 1)
+  if muted then
+    if current then current:pause() end
+  elseif current then
+    current:play()
+  end
+end
+
+function Audio.isEnabled() return not muted end
 
 function Audio.isMuted() return muted end
 

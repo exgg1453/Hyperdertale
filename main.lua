@@ -4,6 +4,7 @@ local Draw = require("src.draw")
 local Input = require("src.input")
 local Audio = require("src.audio")
 local Save = require("src.save")
+local Settings = require("src.settings")
 local Game = require("src.game")
 
 local canvas
@@ -30,6 +31,8 @@ function love.load()
   Draw.load()
   Audio.load()
 
+  Settings.load()
+
   Game.register("title", require("src.scenes.title"))
   Game.register("overworld", require("src.scenes.overworld"))
   Game.register("battle", require("src.scenes.battle"))
@@ -42,6 +45,7 @@ function love.load()
   end
 
   computeScale()
+  Settings.apply()   -- after the first layout, so it can rebuild the buttons
   Game.set("title")
 end
 
@@ -106,9 +110,13 @@ function love.keypressed(key)
     love.window.setFullscreen(not love.window.getFullscreen())
     computeScale()
   elseif key == "m" then
-    Audio.toggleMute()
+    Settings.data.sound = not Settings.data.sound
+    Settings.apply()
+    Settings.save()
   elseif key == "f1" then
     Input.showTouch = not Input.showTouch
+    Settings.data.touchUI = Input.showTouch and "on" or "off"
+    Settings.save()
   end
 end
 

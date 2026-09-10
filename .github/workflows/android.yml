@@ -26,7 +26,7 @@ jobs:
         run: |
           cd game
           zip -9 -r ../hyperdertale.love . \
-            -x '.git/*' '.github/*' 'docs/*' 'dist/*' '*.md' 'LICENSE' '.gitignore'
+            -x '.git/*' '.github/*' 'docs/*' 'dist/*' 'tools/*' '*.md' 'LICENSE' '.gitignore'
           unzip -l ../hyperdertale.love | grep -q ' main.lua$'
 
       - name: Check out the LOVE Android port
@@ -55,6 +55,11 @@ jobs:
             echo "--- $strings"
             cat "$strings"
           done
+
+      - name: Lock the app to landscape
+        run: |
+          cd port
+          python3 "${GITHUB_WORKSPACE}/game/tools/android_landscape.py" app/src
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

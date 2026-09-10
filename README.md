@@ -24,12 +24,19 @@ bunları kendi kodumuzla uyguladık.
 
 ## Oynanış
 
-| Overworld | Savaş | Kaçınma |
+| Overworld (zıplama) | Savaş | Kaçınma |
 |---|---|---|
 | ![Overworld](docs/overworld.png) | ![Savaş](docs/battle.png) | ![Kaçınma](docs/dodging.png) |
 
+| Ayarlar | Dokunmatik kontroller |
+|---|---|
+| ![Ayarlar](docs/settings.png) | ![Dokunmatik](docs/touch.png) |
+
 - **Overworld** — çarpışmalı gezinti, NPC diyalogları, kaydetme yıldızı, tabelalar,
-  odalar arası kapılar ve uzun otlarda rastgele karşılaşmalar.
+  odalar arası kapılar, yerden toplanan eşyalar ve uzun otlarda rastgele karşılaşmalar.
+- **Zıplama** — zemindeki çatlağın üstünden atlanır (yandan dolaşmak da mümkün).
+  Havadayken çukurlar geçilir, duvarlar geçilmez ve otlarda karşılaşma tetiklenmez —
+  yani otların üstünden zıplayarak geçebilirsin.
 - **Savaş** — dört düğmeli menü, zamanlamalı saldırı çubuğu, dört farklı mermi
   deseni, ACT ile merhamet yolu ve SPARE ile öldürmeden bitirme.
 - **İlerleme** — EXP/LV eğrisi, HP/AT/DF, eşyalar, altın, oynama süresi; kayıt
@@ -43,12 +50,29 @@ bunları kendi kodumuzla uyguladık.
 | Hareket | Yön tuşları / WASD | D-pad veya sol analog | Ekrandaki D-pad |
 | Onayla | Z / Enter / Space | A | **Z** düğmesi |
 | İptal / Koş | X / Shift | B veya X | **X** düğmesi |
-| Menü | C / Ctrl / Esc | Y veya Start | **C** düğmesi |
-| Tam ekran | F11 | – | – |
-| Sesi kıs | M | – | Başlık menüsü |
+| Menü | C / Ctrl / Esc | Start veya Back | **C** düğmesi |
+| Zıpla | Space / K | Y | **J** düğmesi |
+| Tam ekran | F11 | – | Ayarlar |
+| Sesi kıs | M | – | Ayarlar |
 
 Dokunmatik kontroller Android'de otomatik açılır. Masaüstünde test etmek için
 **F1**'e basın: aynı ekran düğmeleri fareyle çalışır.
+
+### Ayarlar
+
+Başlık ekranından **SETTINGS**, oyun içinde **C** → **SETTINGS**. Seçimler
+`hyperdertale.cfg` dosyasına yazılır ve yeni oyun başlatınca sıfırlanmaz.
+
+| Ayar | Seçenekler | Ne yapar |
+|---|---|---|
+| SOUND | ON / OFF | Müzik ve efektleri kapatır |
+| CONTROLS | D-PAD / JOYSTICK | Sol taraftaki yürüme kontrolünü değiştirir. Joystick parmağın nereye değerse orada belirir ve analogdur — hafif ittirince karakter yavaş yürür |
+| BUTTON SIZE | SMALL / MEDIUM / LARGE | Ekran düğmelerinin boyutu |
+| TOUCH PAD | AUTO / ON / OFF | Dokunmatik kontrollerin görünürlüğü |
+| FULLSCREEN | ON / OFF | Yalnızca masaüstünde |
+
+Android'de uygulama **yatay moda kilitlidir**; telefonu dik tutunca dikey moda
+düşmez.
 
 ## Çalıştırma
 
@@ -108,6 +132,8 @@ src/
     items.lua         eşyalar
     enemies.lua       canavarlar, ACT seçenekleri, replikler
     patterns.lua      mermi desenleri
+  settings.lua      tercihler ve hyperdertale.cfg dosyası
+  settingsmenu.lua  ayarlar paneli (başlık ve oyun içi menüde ortak)
   scenes/
     title.lua         başlık ekranı ve ana menü
     overworld.lua     gezinti, diyalog, kaydetme, karşılaşmalar
@@ -118,8 +144,8 @@ src/
 ## İçerik eklemek
 
 - **Yeni oda** — `src/scenes/overworld.lua` içindeki `ROOMS` tablosuna bir giriş
-  ekleyin: `walls`, `entities` (npc / save / sign / door) ve isterseniz `grass` +
-  `encounter`.
+  ekleyin: `walls`, `entities` (npc / save / sign / item / door), isterseniz
+  `pits` (zıplanacak çukurlar) ve `grass` + `encounter`.
 - **Yeni canavar** — `src/data/enemies.lua` içine HP, ATK, DEF, `acts` listesi ve
   kullanacağı desen adlarını yazın; `src/sprites.lua`'ya sprite'ını ekleyin.
 - **Yeni mermi deseni** — `src/data/patterns.lua` içine `duration`, `start` ve
@@ -141,4 +167,6 @@ It contains **no** Undertale code, art, music or rooms: the font, sprites and th
 entire soundtrack are generated at runtime from data in `src/`. GitHub Actions
 builds a portable Windows `.exe`, a Linux AppImage, a `.love` package and an
 Android `.apk` on every push, and attaches them to a GitHub Release on a `v*` tag.
-Touch controls are built in and appear automatically on Android.
+Touch controls are built in and appear automatically on Android, with a choice of
+four-way pad or a floating analog stick, plus a jump button; the Android build is
+locked to landscape.

@@ -43,7 +43,7 @@ jobs:
         run: |
           # A .love file is just a zip with main.lua at its root.
           zip -9 -r hyperdertale.love . \
-            -x '.git/*' '.github/*' 'docs/*' 'dist/*' '*.md' 'LICENSE' '.gitignore'
+            -x '.git/*' '.github/*' 'docs/*' 'dist/*' 'tools/*' '*.md' 'LICENSE' '.gitignore'
           unzip -l hyperdertale.love | head -20
 
       - name: Verify main.lua sits at the archive root

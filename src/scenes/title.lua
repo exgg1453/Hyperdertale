@@ -5,6 +5,7 @@ local Input = require("src.input")
 local Audio = require("src.audio")
 local Save = require("src.save")
 local Sprites = require("src.sprites")
+local SettingsMenu = require("src.settingsmenu")
 local Game = require("src.game")
 
 local Title = {}
@@ -15,7 +16,7 @@ local function buildMenu()
     items[#items + 1] = {label = "CONTINUE", action = "continue"}
   end
   items[#items + 1] = {label = "NEW GAME", action = "new"}
-  items[#items + 1] = {label = Audio.isMuted() and "SOUND: OFF" or "SOUND: ON", action = "sound"}
+  items[#items + 1] = {label = "SETTINGS", action = "settings"}
   if love.system.getOS() ~= "Android" and love.system.getOS() ~= "iOS" then
     items[#items + 1] = {label = "QUIT", action = "quit"}
   end
@@ -27,6 +28,7 @@ function Title:enter()
   self.index = 1
   self.time = 0
   self.confirmingNew = false
+  self.settings = nil
   Audio.play("title")
 end
 
@@ -34,10 +36,9 @@ function Title:choose()
   local item = self.menu[self.index]
   if not item then return end
 
-  if item.action == "sound" then
-    Audio.toggleMute()
-    self.menu = buildMenu()
+  if item.action == "settings" then
     Audio.sfx("select")
+    self.settings = SettingsMenu.new()
     return
   end
 
@@ -69,6 +70,11 @@ end
 
 function Title:update(dt)
   self.time = self.time + dt
+
+  if self.settings then
+    if self.settings:update(dt) then self.settings = nil end
+    return
+  end
 
   if self.confirmingNew then
     if Input.pressed("confirm") then
@@ -103,6 +109,11 @@ function Title:draw()
   Draw.textCentered("A FAN GAME BUILT FROM SCRATCH", Draw.W / 2, 78, {0.6, 0.6, 0.6})
 
   Draw.pixels(Sprites.heart, Draw.W / 2 - 14, 96, 4, Sprites.palette.heart)
+
+  if self.settings then
+    self.settings:draw(20, 34, 280, 150)
+    return
+  end
 
   if self.confirmingNew then
     Draw.box(40, 150, 240, 56)
