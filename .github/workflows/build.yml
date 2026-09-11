@@ -10,6 +10,7 @@ on:
 env:
   LOVE_VERSION: "11.5"
   GAME_NAME: "Hyperdertale"
+  BUNDLE_ID: "com.hyperdertale"
 
 jobs:
   lint:
@@ -91,6 +92,74 @@ jobs:
           path: ${{ env.GAME_NAME }}-windows-x64.zip
           if-no-files-found: error
 
+  macos:
+    name: macos app
+    runs-on: macos-latest
+    needs: package
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hyperdertale-love
+
+      - name: Fetch the LOVE runtime
+        run: |
+          curl -fSL -o love-macos.zip \
+            "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-macos.zip"
+          unzip -q love-macos.zip
+          ls love.app/Contents
+
+      - name: Build the app bundle
+        run: |
+          # On launch the runtime looks for any .love in Resources
+          # (pathForResource:nil ofType:@"love") and runs it instead of showing
+          # the "no game" screen.
+          cp hyperdertale.love love.app/Contents/Resources/game.love
+
+          version="0.1.0"
+          case "${GITHUB_REF}" in
+            refs/tags/v*) version="${GITHUB_REF_NAME#v}" ;;
+          esac
+
+          plist="love.app/Contents/Info.plist"
+          buddy=/usr/libexec/PlistBuddy
+          "$buddy" -c "Set :CFBundleIdentifier ${BUNDLE_ID}" "$plist"
+          "$buddy" -c "Set :CFBundleName ${GAME_NAME}" "$plist"
+          "$buddy" -c "Set :CFBundleShortVersionString ${version}" "$plist"
+          "$buddy" -c "Set :NSHumanReadableCopyright Hyperdertale contributors. LOVE (c) LOVE Development Team." "$plist"
+
+          # The runtime ships a neutral game icon for exactly this case.
+          "$buddy" -c "Set :CFBundleIconFile GameIcon" "$plist"
+          "$buddy" -c "Delete :CFBundleIconName" "$plist" || true
+
+          # Without these the game would register itself as the system handler
+          # for every .love file on the machine.
+          "$buddy" -c "Delete :CFBundleDocumentTypes" "$plist" || true
+          "$buddy" -c "Delete :UTExportedTypeDeclarations" "$plist" || true
+
+          mv love.app "${GAME_NAME}.app"
+          "$buddy" -c "Print :CFBundleIdentifier" "${GAME_NAME}.app/Contents/Info.plist"
+          "$buddy" -c "Print :CFBundleName" "${GAME_NAME}.app/Contents/Info.plist"
+
+      - name: Sign the bundle ad-hoc
+        run: |
+          # Editing the bundle invalidates the signature it shipped with, and
+          # Apple Silicon refuses to run unsigned code at all, so re-sign it.
+          # Frameworks have to be signed before the bundle that contains them.
+          codesign --force --deep --sign - "${GAME_NAME}.app"
+          codesign --verify --deep --strict --verbose=2 "${GAME_NAME}.app"
+
+      - name: Package the disk image
+        run: |
+          hdiutil create -volname "${GAME_NAME}" -srcfolder "${GAME_NAME}.app" \
+            -ov -format UDZO "${GAME_NAME}-macOS.dmg"
+          ls -la "${GAME_NAME}-macOS.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hyperdertale-macos
+          path: ${{ env.GAME_NAME }}-macOS.dmg
+          if-no-files-found: error
+
   linux:
     name: linux appimage
     runs-on: ubuntu-latest
@@ -135,7 +204,7 @@ jobs:
   release:
     name: publish release
     runs-on: ubuntu-latest
-    needs: [windows, linux]
+    needs: [windows, macos, linux]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -147,7 +216,8 @@ jobs:
       - name: Collect the files
         run: |
           mkdir -p release
-          find artifacts -type f \( -name '*.zip' -o -name '*.love' -o -name '*.AppImage' -o -name '*.apk' \) \
+          find artifacts -type f \( -name '*.zip' -o -name '*.love' -o -name '*.AppImage' \
+            -o -name '*.dmg' -o -name '*.apk' \) \
             -exec cp {} release/ \;
           ls -la release
 

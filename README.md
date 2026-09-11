@@ -100,6 +100,7 @@ Artifacts** altından indirilir:
 | İş akışı | Çıktı | Not |
 |---|---|---|
 | `build.yml` | `Hyperdertale-windows-x64.zip` | LÖVE çalışma zamanı `.exe`'ye kaynaştırılmış taşınabilir sürüm; kurulum gerektirmez |
+| `build.yml` | `Hyperdertale-macOS.dmg` | macOS uygulaması (.app), Intel ve Apple Silicon için universal |
 | `build.yml` | `Hyperdertale-x86_64.AppImage` | Linux |
 | `build.yml` | `hyperdertale.love` | Her platformda LÖVE ile açılır |
 | `android.yml` | `Hyperdertale-app-*.apk` | `love-android` üzerinden derlenen debug imzalı APK. Uygulama adı **Hyperdertale**, paket adı **com.hyperdertale**, yatay moda kilitli |
@@ -116,6 +117,17 @@ git tag v0.1.0 && git push origin v0.1.0
 
 APK debug anahtarıyla imzalanır: telefona doğrudan kurulur, ancak Play Store'a
 yüklemek için kendi release anahtarınızla imzalamanız gerekir.
+
+### macOS'ta ilk açılış
+
+`.dmg` içindeki `Hyperdertale.app` **ad-hoc** imzalıdır (Apple geliştirici
+sertifikası yok), bu yüzden ilk açışta Gatekeeper uyarı verir. Bir defaya mahsus:
+
+- Uygulamaya **sağ tık → Aç**, sonra çıkan pencerede yine **Aç**.
+- Ya da terminalden: `xattr -dr com.apple.quarantine /Applications/Hyperdertale.app`
+
+Sonraki açılışlarda normal şekilde çift tıkla açılır. Notarize edilmiş bir sürüm
+istersen ücretli bir Apple Developer hesabı ve imza anahtarı gerekir.
 
 ## Proje yapısı
 
@@ -170,8 +182,8 @@ Undertale, Toby Fox'un eseridir ve bu proje ile bir ilişkisi yoktur.
 Hyperdertale is an Undertale-inspired fan game written from scratch in LÖVE 2D.
 It contains **no** Undertale code, art, music or rooms: the font, sprites and the
 entire soundtrack are generated at runtime from data in `src/`. GitHub Actions
-builds a portable Windows `.exe`, a Linux AppImage, a `.love` package and an
-Android `.apk` on every push, and attaches them to a GitHub Release on a `v*` tag.
+builds a portable Windows `.exe`, a macOS `.dmg`, a Linux AppImage, a `.love`
+package and an Android `.apk` on every push, and attaches them to a GitHub Release on a `v*` tag.
 Touch controls are built in and appear automatically on Android, with a choice of
 four-way pad or a floating analog stick, plus a jump button; the Android build is
 locked to landscape, and is installed as Hyperdertale (com.hyperdertale).
