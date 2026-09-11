@@ -86,7 +86,23 @@ jobs:
         run: |
           mkdir -p out
           find port -name '*.apk' -path '*outputs*' -print -exec cp {} out/ \;
-          cd out && for f in *.apk; do mv "$f" "Hyperdertale-${f}"; done
+
+          version="dev-${GITHUB_SHA:0:7}"
+          case "${GITHUB_REF}" in
+            refs/tags/v*) version="${GITHUB_REF_NAME#v}" ;;
+          esac
+
+          # Gradle names the file after its build flavours
+          # (app-embed-noRecord-debug.apk). This is what people download from a
+          # release, so give it the game's name and version instead.
+          cd out
+          index=0
+          for f in *.apk; do
+            index=$((index + 1))
+            suffix=""
+            [ "$index" -gt 1 ] && suffix="-${index}"
+            mv "$f" "Hyperdertale-${version}-android${suffix}.apk"
+          done
           ls -la
 
       - uses: actions/upload-artifact@v4
