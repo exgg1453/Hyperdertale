@@ -16,6 +16,9 @@ jobs:
   apk:
     name: build apk
     runs-on: ubuntu-latest
+    # Needed to attach the APK to a release; without it the upload gets a 403.
+    permissions:
+      contents: write
     steps:
       - name: Check out the game
         uses: actions/checkout@v4
@@ -97,5 +100,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # This job and the desktop one race each other, so whichever arrives
+          # first creates the release. No "|| true" here: a failed upload must
+          # fail the job rather than leave a release quietly missing the APK.
+          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1 \
+            || gh release create "${GITHUB_REF_NAME}" \
+                 --repo "${GITHUB_REPOSITORY}" \
+                 --title "Hyperdertale ${GITHUB_REF_NAME}" \
+                 --generate-notes
+
           gh release upload "${GITHUB_REF_NAME}" out/*.apk \
-            --repo "${GITHUB_REPOSITORY}" --clobber || true
+            --repo "${GITHUB_REPOSITORY}" --clobber
