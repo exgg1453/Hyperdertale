@@ -31,6 +31,12 @@ function love.load()
   Draw.load()
   Audio.load()
 
+  -- The window and taskbar icon. Wrapped because a missing or unreadable file
+  -- should cost the game its icon, not its launch.
+  pcall(function ()
+    love.window.setIcon(love.image.newImageData("assets/icon.png"))
+  end)
+
   Settings.load()
 
   Game.register("title", require("src.scenes.title"))

@@ -1,12 +1,17 @@
-node_modules/
+# Build output
 dist/
 build/
-out/
-android/
-ios/
-*.log
-.DS_Store
-Thumbs.db
-.env
+*.love
+*.exe
+*.dmg
+*.apk
+*.AppImage
+
+# Tooling
 __pycache__/
 *.pyc
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db

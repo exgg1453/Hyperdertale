@@ -15,12 +15,27 @@ Buradaki her şey bu depoda üretiliyor:
 - **Yazı tipi** — 5x7 bitmap font, `src/font.lua` içinde çalışma anında atlas
   olarak oluşturuluyor.
 - **Grafikler** — bütün sprite'lar `src/sprites.lua` içinde karakter haritası;
-  odalar ve arayüz kodla çiziliyor. Depoda tek bir görsel dosya yok.
-- **Müzik ve sesler** — `src/audio.lua` içindeki nota tabloları WebAudio değil,
-  LÖVE'ın `SoundData`'sına kare/üçgen dalga olarak sentezleniyor. Ses dosyası da yok.
+  odalar ve arayüz kodla çiziliyor. Oyunun içindeki tek görsel dosya uygulama
+  ikonudur (`assets/icon.png`); sprite'ların hiçbiri dosyadan gelmiyor.
+- **Müzik ve sesler** — `src/audio.lua` içindeki nota tabloları LÖVE'ın
+  `SoundData`'sına kare/üçgen dalga olarak sentezleniyor. Ses dosyası yok.
 
 Oyunun *mekanikleri* türün ortak dili (kalp/SOUL, mermi kaçınma, FIGHT/ACT/ITEM/MERCY);
 bunları kendi kodumuzla uyguladık.
+
+### Uygulama ikonu
+
+Kaynak görsel `packaging/icon.png` (1024x1024). Tüm platform boyutları ondan
+üretiliyor:
+
+```bash
+python3 tools/make_icons.py yeni-gorsel.png
+```
+
+Bu komut Windows `.ico` dosyasını, Android'in beş yoğunluk boyutunu, oyunun
+pencere ikonunu (`assets/icon.png`) ve master kopyayı yeniden yazar — başka
+hiçbir yeri elle güncellemek gerekmez. macOS `.icns` dosyası derleme sırasında
+`sips` + `iconutil` ile master'dan üretilir.
 
 ## Oynanış
 
@@ -106,7 +121,7 @@ Artifacts** altından indirilir:
 
 | İş akışı | Çıktı | Not |
 |---|---|---|
-| `build.yml` | `Hyperdertale-windows-x64.zip` | LÖVE çalışma zamanı `.exe`'ye kaynaştırılmış taşınabilir sürüm; kurulum gerektirmez |
+| `build.yml` | `Hyperdertale-windows-x64.zip` | LÖVE çalışma zamanı `.exe`'ye kaynaştırılmış taşınabilir sürüm; kurulum gerektirmez, ikon ve sürüm bilgisi gömülü |
 | `build.yml` | `Hyperdertale-macOS.dmg` | macOS uygulaması (.app), Intel ve Apple Silicon için universal |
 | `build.yml` | `Hyperdertale-x86_64.AppImage` | Linux |
 | `build.yml` | `hyperdertale.love` | Her platformda LÖVE ile açılır |

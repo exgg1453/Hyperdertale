@@ -44,7 +44,7 @@ jobs:
         run: |
           # A .love file is just a zip with main.lua at its root.
           zip -9 -r hyperdertale.love . \
-            -x '.git/*' '.github/*' 'docs/*' 'dist/*' 'tools/*' '*.md' 'LICENSE' '.gitignore'
+            -x '.git/*' '.github/*' 'docs/*' 'dist/*' 'tools/*' 'packaging/*' '*.md' 'LICENSE' '.gitignore'
           unzip -l hyperdertale.love | head -20
 
       - name: Verify main.lua sits at the archive root
@@ -58,21 +58,49 @@ jobs:
 
   windows:
     name: windows exe
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: package
     steps:
+      # Checkout first: it cleans the workspace, which would remove a
+      # previously downloaded artifact.
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: hyperdertale-love
 
       - name: Fetch the LOVE runtime
+        shell: bash
         run: |
           curl -fSL -o love-win64.zip \
             "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-win64.zip"
           unzip -q love-win64.zip
           ls "love-${LOVE_VERSION}-win64"
 
+      - name: Put the game icon and details on the executable
+        shell: bash
+        run: |
+          curl -fSL -o rcedit.exe \
+            "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe"
+
+          version="0.1.0"
+          case "${GITHUB_REF}" in
+            refs/tags/v*) version="${GITHUB_REF_NAME#v}" ;;
+          esac
+
+          # The icon has to go on before the game is appended: rcedit rewrites
+          # the executable and would drop anything stuck on the end of it.
+          exe="love-${LOVE_VERSION}-win64/love.exe"
+          ./rcedit.exe "$exe" \
+            --set-icon packaging/icon.ico \
+            --set-version-string "ProductName" "${GAME_NAME}" \
+            --set-version-string "FileDescription" "${GAME_NAME}" \
+            --set-version-string "LegalCopyright" "${GAME_NAME} contributors" \
+            --set-file-version "${version}.0" \
+            --set-product-version "${version}.0"
+
       - name: Fuse the game onto love.exe
+        shell: bash
         run: |
           runtime="love-${LOVE_VERSION}-win64"
           mkdir -p "dist/${GAME_NAME}"
@@ -83,8 +111,9 @@ jobs:
           ls -la "dist/${GAME_NAME}"
 
       - name: Zip the portable build
+        shell: bash
         run: |
-          cd dist && zip -9 -r "../${GAME_NAME}-windows-x64.zip" "${GAME_NAME}"
+          cd dist && 7z a -tzip "../${GAME_NAME}-windows-x64.zip" "${GAME_NAME}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -97,6 +126,8 @@ jobs:
     runs-on: macos-latest
     needs: package
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: hyperdertale-love
@@ -107,6 +138,20 @@ jobs:
             "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-macos.zip"
           unzip -q love-macos.zip
           ls love.app/Contents
+
+      - name: Build the icon
+        run: |
+          # sips and iconutil ship with macOS, so the artwork needs no tooling
+          # of its own here.
+          mkdir -p icon.iconset
+          for size in 16 32 128 256 512; do
+            sips -z $size $size packaging/icon.png \
+              --out "icon.iconset/icon_${size}x${size}.png" > /dev/null
+            sips -z $((size * 2)) $((size * 2)) packaging/icon.png \
+              --out "icon.iconset/icon_${size}x${size}@2x.png" > /dev/null
+          done
+          iconutil -c icns icon.iconset -o GameIcon.icns
+          ls -la GameIcon.icns
 
       - name: Build the app bundle
         run: |
@@ -127,7 +172,8 @@ jobs:
           "$buddy" -c "Set :CFBundleShortVersionString ${version}" "$plist"
           "$buddy" -c "Set :NSHumanReadableCopyright Hyperdertale contributors. LOVE (c) LOVE Development Team." "$plist"
 
-          # The runtime ships a neutral game icon for exactly this case.
+          # CFBundleIconFile already points at GameIcon; swap the artwork in.
+          cp GameIcon.icns love.app/Contents/Resources/GameIcon.icns
           "$buddy" -c "Set :CFBundleIconFile GameIcon" "$plist"
           "$buddy" -c "Delete :CFBundleIconName" "$plist" || true
 
@@ -165,6 +211,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: package
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: hyperdertale-love
@@ -190,7 +238,21 @@ jobs:
           mv fused "$payload/bin/love"
           chmod +x "$payload/bin/love"
 
-          sed -i "s/^Name=.*/Name=${GAME_NAME}/" "$payload/love.desktop"
+          # The desktop entry still described the LOVE engine, hid itself from
+          # menus and claimed .love files; it describes this game now.
+          desktop="$payload/love.desktop"
+          sed -i "s/^Name=.*/Name=${GAME_NAME}/" "$desktop"
+          sed -i "s|^Comment=.*|Comment=An Undertale-inspired fan game|" "$desktop"
+          sed -i "s/^Icon=.*/Icon=hyperdertale/" "$desktop"
+          sed -i "/^NoDisplay=/d; /^MimeType=/d" "$desktop"
+          sed -i "s/^Categories=.*/Categories=Game;/" "$desktop"
+          cat "$desktop"
+
+          # .DirIcon is a symlink to the LOVE logo; replace both it and the
+          # icon the desktop entry names.
+          rm -f "$payload/.DirIcon" "$payload/love.svg"
+          cp assets/icon.png "$payload/hyperdertale.png"
+          cp assets/icon.png "$payload/.DirIcon"
 
           ARCH=x86_64 ./tool/squashfs-root/AppRun "$payload" "${GAME_NAME}-x86_64.AppImage"
           ls -la "${GAME_NAME}-x86_64.AppImage"
