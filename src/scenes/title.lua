@@ -62,9 +62,7 @@ function Title:choose()
       return
     end
     Audio.sfx("select")
-    Save.erase()
-    Save.reset()
-    Game.switch("overworld", {room = "ruins_entry", intro = true})
+    Game.switch("naming")
   end
 end
 
@@ -78,10 +76,8 @@ function Title:update(dt)
 
   if self.confirmingNew then
     if Input.pressed("confirm") then
-      Save.erase()
-      Save.reset()
       Audio.sfx("select")
-      Game.switch("overworld", {room = "ruins_entry", intro = true})
+      Game.switch("naming")
     elseif Input.pressed("cancel") or Input.pressed("menu") then
       self.confirmingNew = false
       Audio.sfx("cancel")

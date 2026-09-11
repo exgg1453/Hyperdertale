@@ -34,6 +34,7 @@ function love.load()
   Settings.load()
 
   Game.register("title", require("src.scenes.title"))
+  Game.register("naming", require("src.scenes.naming"))
   Game.register("overworld", require("src.scenes.overworld"))
   Game.register("battle", require("src.scenes.battle"))
   Game.register("gameover", require("src.scenes.gameover"))

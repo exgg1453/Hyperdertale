@@ -511,8 +511,10 @@ function Battle:drawButtons()
     Draw.frame(x, y, w, h, color, 2)
     Draw.textCentered(label, x + w / 2, y + h / 2 - 4, color)
 
+    -- Inside the button: the gap between buttons is only 8px, so a cursor
+    -- drawn to the left of one sits on top of the previous one.
     if selected and self.state == "menu" then
-      Draw.pixels(Sprites.heart, x - 12, y + h / 2 - 3, 1, Sprites.palette.heart)
+      Draw.pixels(Sprites.heart, x + 6, y + h / 2 - 3, 1, Sprites.palette.heart)
     end
   end
 end
@@ -525,8 +527,14 @@ function Battle:drawBoxContents()
 
   Draw.box(BOX.x, BOX.y, BOX.w, BOX.h)
 
+  -- Nothing drawn from here on may leave the box.
+  love.graphics.setScissor(BOX.x + 2, BOX.y + 2, BOX.w - 4, BOX.h - 4)
+
   if self.state == "menu" then
-    Draw.text(self.flavor or "", BOX.x + 12, BOX.y + 12)
+    for i, line in ipairs(Draw.wrap(self.flavor or "", BOX.w - 24)) do
+      Draw.text(line, BOX.x + 12, BOX.y + 12 + (i - 1) * Draw.lineHeight)
+    end
+    love.graphics.setScissor()
     return
   end
 
@@ -534,6 +542,7 @@ function Battle:drawBoxContents()
     local items = self:submenuItems()
     if #items == 0 then
       Draw.text("* You have nothing to use.", BOX.x + 12, BOX.y + 12)
+      love.graphics.setScissor()
       return
     end
 
@@ -553,6 +562,7 @@ function Battle:drawBoxContents()
       if self.sub == "MERCY" and i == 1 and self.spareable then color = {1, 1, 0.2} end
       Draw.text(label, x, y, color)
     end
+    love.graphics.setScissor()
     return
   end
 
@@ -566,6 +576,8 @@ function Battle:drawBoxContents()
 
     Draw.rect(attack.x - 1, BOX.y + 10, 3, 42, attack.done and {1, 0.3, 0.3} or {1, 1, 1})
 
+    love.graphics.setScissor()
+
     if attack.done then
       local label = attack.damage > 0 and tostring(attack.damage) or "MISS"
       Draw.textCentered(label, Draw.W / 2, 100, {1, 0.25, 0.25})
@@ -574,9 +586,8 @@ function Battle:drawBoxContents()
   end
 
   if self.state == "enemyTurn" then
-    -- Clip to the inside of the box: bullets enter and leave at its edges
-    -- instead of flying across the buttons below.
-    love.graphics.setScissor(BOX.x + 2, BOX.y + 2, BOX.w - 4, BOX.h - 4)
+    -- Bullets enter and leave at the box edges instead of flying across the
+    -- buttons below; the clip set above already covers this.
 
     for _, bullet in ipairs(self.bullets) do
       Draw.rect(bullet.x, bullet.y, bullet.w, bullet.h, bullet.color)
@@ -588,8 +599,9 @@ function Battle:drawBoxContents()
       Draw.pixels(Sprites.heart, self.soul.x - 3.5, self.soul.y - 3, 1, Sprites.palette.heart)
     end
 
-    love.graphics.setScissor()
   end
+
+  love.graphics.setScissor()
 end
 
 function Battle:draw()

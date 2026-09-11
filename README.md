@@ -28,10 +28,17 @@ bunları kendi kodumuzla uyguladık.
 |---|---|---|
 | ![Giriş](docs/overworld.png) | ![Savaş](docs/battle.png) | ![Kaçınma](docs/dodging.png) |
 
-| Zıplama | Ayarlar | Dokunmatik |
+| Zıplama | Ayarlar | İsim girme |
 |---|---|---|
-| ![Zıplama](docs/jumping.png) | ![Ayarlar](docs/settings.png) | ![Dokunmatik](docs/touch.png) |
+| ![Zıplama](docs/jumping.png) | ![Ayarlar](docs/settings.png) | ![İsim](docs/naming.png) |
 
+| Dokunmatik kontroller |
+|---|
+| ![Dokunmatik](docs/touch.png) |
+
+- **İsim girme** — yeni oyuna başlarken karakterine 6 harfe kadar isim verirsin;
+  harf ızgarasında yön tuşlarıyla gezinir, Z ile seçer, X ile silersin. İsim
+  kayıt dosyasında tutulur ve menüde, savaşta hep görünür.
 - **Overworld** — çarpışmalı gezinti, NPC diyalogları, kaydetme yıldızı, tabelalar,
   kapılar, yerden toplanan eşyalar ve uzun otlarda rastgele karşılaşmalar.
 - **Yataklar** — girişteki iki yatakta uyuyabilirsin: ekran kararır, HP tamamen
