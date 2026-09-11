@@ -125,17 +125,27 @@ Artifacts** altından indirilir:
 | `build.yml` | `Hyperdertale-macOS.dmg` | macOS uygulaması (.app), Intel ve Apple Silicon için universal |
 | `build.yml` | `Hyperdertale-x86_64.AppImage` | Linux |
 | `build.yml` | `hyperdertale.love` | Her platformda LÖVE ile açılır |
-| `android.yml` | `Hyperdertale-app-*.apk` | `love-android` üzerinden derlenen debug imzalı APK. Uygulama adı **Hyperdertale**, paket adı **com.hyperdertale**, yatay moda kilitli |
+| `android.yml` | `Hyperdertale-android.apk` | `love-android` üzerinden derlenen debug imzalı APK. Uygulama adı **Hyperdertale**, paket adı **com.hyperdertale**, yatay moda kilitli |
 
 `build.yml` ayrıca her `.lua` dosyasını `luac -p` ile derleyip sözdizimi
 hatalarını CI'da yakalar.
 
-**Sürüm yayınlamak için** `v` ile başlayan bir etiket atın; Actions çıktıları
-otomatik olarak GitHub Release'e yüklenir:
+### Otomatik yayın
+
+Ana dala her push'ta dört platform derlenir ve **`latest`** adlı ön-sürüme
+yüklenir — etiket atmaya gerek yok, en güncel yapı her zaman indirilebilir:
+
+<https://github.com/exgg1453/Hyperdertale/releases/tag/latest>
+
+Bu sürüm her push'ta yenilenir, yani içindeki dosyalar hep son commit'e aittir.
+Sabit kalmasını istediğin bir sürüm için `v` ile başlayan bir etiket at; o kendi
+release'ini alır ve bir daha değişmez:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+git tag v1.0.0 && git push origin v1.0.0
 ```
+
+Ana dal dışındaki dallar derlenir ama hiçbir yere yayınlanmaz.
 
 APK debug anahtarıyla imzalanır: telefona doğrudan kurulur, ancak Play Store'a
 yüklemek için kendi release anahtarınızla imzalamanız gerekir.

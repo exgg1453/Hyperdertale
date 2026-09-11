@@ -87,21 +87,17 @@ jobs:
           mkdir -p out
           find port -name '*.apk' -path '*outputs*' -print -exec cp {} out/ \;
 
-          version="dev-${GITHUB_SHA:0:7}"
-          case "${GITHUB_REF}" in
-            refs/tags/v*) version="${GITHUB_REF_NAME#v}" ;;
-          esac
-
           # Gradle names the file after its build flavours
           # (app-embed-noRecord-debug.apk). This is what people download from a
-          # release, so give it the game's name and version instead.
+          # release, so give it the game's name. The name is fixed rather than
+          # versioned so each build replaces the last one on the rolling release.
           cd out
           index=0
           for f in *.apk; do
             index=$((index + 1))
             suffix=""
             [ "$index" -gt 1 ] && suffix="-${index}"
-            mv "$f" "Hyperdertale-${version}-android${suffix}.apk"
+            mv "$f" "Hyperdertale-android${suffix}.apk"
           done
           ls -la
 
@@ -111,19 +107,40 @@ jobs:
           path: out/*.apk
           if-no-files-found: error
 
-      - name: Attach to the release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish to the release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          # A tag publishes to that tag; the default branch keeps the rolling
+          # "latest" pre-release current. Anything else builds but publishes
+          # nothing.
+          case "${GITHUB_REF}" in
+            refs/tags/v*)
+              tag="${GITHUB_REF_NAME}"
+              title="Hyperdertale ${GITHUB_REF_NAME}"
+              ;;
+            *)
+              if [ "${GITHUB_REF_NAME}" != "${DEFAULT_BRANCH}" ]; then
+                echo "${GITHUB_REF_NAME} is not the default branch; not publishing."
+                exit 0
+              fi
+              tag="latest"
+              title="Latest build"
+              ;;
+          esac
+
           # This job and the desktop one race each other, so whichever arrives
           # first creates the release. No "|| true" here: a failed upload must
           # fail the job rather than leave a release quietly missing the APK.
-          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1 \
-            || gh release create "${GITHUB_REF_NAME}" \
+          gh release view "$tag" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1 \
+            || gh release create "$tag" \
                  --repo "${GITHUB_REPOSITORY}" \
-                 --title "Hyperdertale ${GITHUB_REF_NAME}" \
-                 --generate-notes
+                 --target "${GITHUB_SHA}" \
+                 --prerelease \
+                 --title "$title" \
+                 --notes "Build of ${GITHUB_SHA}."
 
-          gh release upload "${GITHUB_REF_NAME}" out/*.apk \
+          gh release upload "$tag" out/*.apk \
             --repo "${GITHUB_REPOSITORY}" --clobber

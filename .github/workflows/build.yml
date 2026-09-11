@@ -267,7 +267,7 @@ jobs:
     name: publish release
     runs-on: ubuntu-latest
     needs: [windows, macos, linux]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push'
     permissions:
       contents: write
     steps:
@@ -283,12 +283,61 @@ jobs:
             -exec cp {} release/ \;
           ls -la release
 
-      - name: Upload to the release
+      - name: Work out where this build publishes
+        id: target
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          # A tag publishes to that tag and stays put. Every push to the default
+          # branch refreshes one rolling "latest" pre-release, so the newest
+          # build of all four platforms is always downloadable without tagging.
+          case "${GITHUB_REF}" in
+            refs/tags/v*)
+              echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+              echo "rolling=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              if [ "${GITHUB_REF_NAME}" != "${DEFAULT_BRANCH}" ]; then
+                echo "${GITHUB_REF_NAME} is not the default branch; not publishing."
+                echo "tag=" >> "$GITHUB_OUTPUT"
+              else
+                echo "tag=latest" >> "$GITHUB_OUTPUT"
+              fi
+              echo "rolling=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Publish
+        if: steps.target.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.target.outputs.tag }}
+          ROLLING: ${{ steps.target.outputs.rolling }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release/* \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "${GAME_NAME} ${GITHUB_REF_NAME}" \
-            --generate-notes \
-          || gh release upload "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --clobber
+          if [ "$ROLLING" = "true" ]; then
+            notes=$(printf 'Automatic build of the newest commit.\n\nCommit: %s\n\nThis pre-release is replaced by every push. For a fixed version, see the tagged releases.' "${GITHUB_SHA}")
+            title="${GAME_NAME} (latest build)"
+          else
+            notes=""
+            title="${GAME_NAME} ${TAG}"
+          fi
+
+          if ! gh release view "$TAG" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+            if [ "$ROLLING" = "true" ]; then
+              gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" \
+                --target "${GITHUB_SHA}" --prerelease \
+                --title "$title" --notes "$notes"
+            else
+              gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" \
+                --title "$title" --generate-notes
+            fi
+          elif [ "$ROLLING" = "true" ]; then
+            # Drag the tag and the notes onto this commit so "latest" means it.
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" \
+              -f sha="${GITHUB_SHA}" -F force=true > /dev/null
+            gh release edit "$TAG" --repo "${GITHUB_REPOSITORY}" --notes "$notes"
+          fi
+
+          gh release upload "$TAG" release/* --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release view "$TAG" --repo "${GITHUB_REPOSITORY}" --json assets \
+            --jq '.assets[] | "  \(.name)  \(.size)"' 
