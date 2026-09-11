@@ -35,6 +35,8 @@ local function buildRows()
     {
       label = "CONTROLS",
       value = function () return data.controls == "stick" and "JOYSTICK" or "D-PAD" end,
+      -- Turning the stick ON asks first; turning it off is always safe.
+      warn = function () return data.controls ~= "stick" end,
       change = function ()
         data.controls = (data.controls == "stick") and "dpad" or "stick"
       end,
@@ -79,15 +81,62 @@ local function buildRows()
   return rows
 end
 
+-- Shown before the stick is switched on. The stick is fine for walking and
+-- dodging but slow in menus and on the naming grid, and that is worth knowing
+-- before the player is holding it.
+local WARNING = {
+  "THE JOYSTICK IS BUILT FOR",
+  "WALKING AND DODGING.",
+  "MENUS AND THE NAME GRID",
+  "ARE SLOWER WITH IT.",
+}
+
 function Menu.new()
   local self = setmetatable({}, Menu)
   self.rows = buildRows()
   self.index = 1
+  self.pending = nil     -- a change waiting on the warning below
+  self.pendingIndex = 1  -- 1 = NO, 2 = YES
   return self
+end
+
+function Menu:applyPending()
+  local row = self.pending
+  self.pending = nil
+  if not row then return end
+  row.change(1)
+  Audio.sfx("select")
+  Settings.apply()
+  Settings.save()
+end
+
+function Menu:updateWarning()
+  if Input.pressed("left") or Input.pressed("right") then
+    self.pendingIndex = self.pendingIndex == 1 and 2 or 1
+    Audio.sfx("move")
+    return
+  end
+
+  if Input.pressed("confirm") then
+    if self.pendingIndex == 2 then
+      self:applyPending()
+    else
+      self.pending = nil
+      Audio.sfx("cancel")
+    end
+  elseif Input.pressed("cancel") or Input.pressed("menu") then
+    self.pending = nil
+    Audio.sfx("cancel")
+  end
 end
 
 --- Returns true on the frame the player leaves the panel.
 function Menu:update(dt)
+  if self.pending then
+    self:updateWarning()
+    return false
+  end
+
   if Input.pressed("up") then
     self.index = self.index > 1 and self.index - 1 or #self.rows
     Audio.sfx("move")
@@ -103,6 +152,12 @@ function Menu:update(dt)
   elseif Input.pressed("left") then step = -1 end
 
   if row and row.change and step ~= 0 then
+    if row.warn and row.warn() then
+      self.pending = row
+      self.pendingIndex = 1     -- default to NO: the safe answer
+      Audio.sfx("menu")
+      return false
+    end
     row.change(step)
     Audio.sfx("select")
     Settings.apply()
@@ -117,6 +172,12 @@ function Menu:update(dt)
       Settings.save()
       return true
     elseif row and row.change then
+      if row.warn and row.warn() then
+        self.pending = row
+        self.pendingIndex = 1
+        Audio.sfx("menu")
+        return false
+      end
       row.change(1)
       Audio.sfx("select")
       Settings.apply()
@@ -156,6 +217,34 @@ function Menu:draw(x, y, w, h)
   end
 
   Draw.text("ARROWS CHANGE     X BACK", x + 22, y + h - 14, {0.5, 0.5, 0.5})
+
+  if self.pending then
+    Draw.fade(0.65)
+
+    local bw, bh = 248, 92
+    local bx = x + (w - bw) / 2
+    local by = y + (h - bh) / 2
+    Draw.box(bx, by, bw, bh)
+
+    for i, text in ipairs(WARNING) do
+      Draw.textCentered(text, bx + bw / 2, by + 8 + (i - 1) * Draw.lineHeight,
+        i <= 2 and {1, 1, 1} or {1, 0.75, 0.3})
+    end
+
+    Draw.textCentered("ACCEPT?", bx + bw / 2, by + 8 + 4 * Draw.lineHeight + 4,
+      {1, 1, 1})
+
+    local options = {"NO", "YES"}
+    for i, label in ipairs(options) do
+      local ox = bx + (i == 1 and 74 or 150)
+      local oy = by + bh - 16
+      local selected = i == self.pendingIndex
+      if selected then
+        Draw.pixels(Sprites.heart, ox - 14, oy + 1, 1, Sprites.palette.heart)
+      end
+      Draw.text(label, ox, oy, selected and {1, 1, 0.2} or {1, 1, 1})
+    end
+  end
 end
 
 return Menu

@@ -91,7 +91,7 @@ Başlık ekranından **SETTINGS**, oyun içinde **C** → **SETTINGS**. Seçimle
 |---|---|---|
 | SOUND | ON / OFF | Ana ses anahtarı — müzik ve efektlerin ikisini birden kapatır |
 | MUSIC | ON / OFF | Sadece müziği kapatır, efektler açık kalır. SOUND kapalıysa `--` görünür |
-| CONTROLS | D-PAD / JOYSTICK | Sol taraftaki yürüme kontrolünü değiştirir. Joystick parmağın nereye değerse orada belirir ve analogdur — hafif ittirince karakter yavaş yürür |
+| CONTROLS | D-PAD / JOYSTICK | Sol taraftaki yürüme kontrolünü değiştirir. Joystick parmağın nereye değerse orada belirir ve analogdur — hafif ittirince karakter yavaş yürür. Joystick'e geçmeden önce oyun uyarır: yürüme ve kaçınma için iyidir, menülerde ve isim ızgarasında D-pad'den yavaştır |
 | BUTTON SIZE | SMALL / MEDIUM / LARGE | Ekran düğmelerinin boyutu |
 | TOUCH PAD | AUTO / ON / OFF | Dokunmatik kontrollerin görünürlüğü |
 | FULLSCREEN | ON / OFF | Yalnızca masaüstünde |
